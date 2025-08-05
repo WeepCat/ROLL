@@ -32,7 +32,8 @@ def collate_fn_to_dict_list(data_list: list[dict]) -> dict:
         tensors[key] = torch.cat(val, dim=0)
 
     for key, val in non_tensors.items():
-        non_tensors[key] = np.array(val, dtype=object)
+        non_tensors[key] = np.empty(len(val), dtype=object)
+        non_tensors[key][:] = val
 
     output = {}
     output.update(tensors)
@@ -214,5 +215,6 @@ class DataCollatorWithPaddingForMM:
                 assert batch[key].shape[0] == batch["input_ids"].shape[0]
             else:
                 assert len(batch[key]) == batch["input_ids"].shape[0]
-                batch[key] = np.array(batch[key], dtype=object)
+                batch[key] = np.empty(len(batch[key]), dtype=object)
+                batch[key][:] = batch[key]
         return batch
