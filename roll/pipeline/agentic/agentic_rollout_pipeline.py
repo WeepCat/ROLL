@@ -63,8 +63,9 @@ class AgenticRolloutPipeline(BasePipeline):
             batch.meta_info = {"global_step": global_step}
 
             with Timer(name="rollout", logger=None) as rollout_timer:
-                batch.meta_info["is_offload_states"] = True
-                self.actor_infer.start_server(data=batch)
+                if self.use_policy_model:
+                    batch.meta_info["is_offload_states"] = True
+                    self.actor_infer.start_server(data=batch)
                 batch = ray.get(self.rollout_scheduler.get_batch.remote(batch, self.pipeline_config.rollout_batch_size))
                 if batch is None:
                     break
