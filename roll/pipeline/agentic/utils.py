@@ -204,13 +204,13 @@ def dump_rollout_trajectories(path, global_step, data: DataProto):
     """
     Dumps rollout trajectories to persistent storage.
 
-    The data is written using a column-based configuration defined in COLUMMNS_CONFIG.
+    The data is written using a column-based configuration defined in COLUMNS_CONFIG.
     Each column is specified as a list [column_name, data_type], where:
     - column_name: string identifier for the column
     - data_type: data type specification ('bigint', 'string', 'double', etc.)
 
     Example configuration:
-    colummns_config = [
+    columns_config = [
         ['global_step', 'bigint'],
         ['id', 'string'],
         ['source', 'string'],
@@ -220,7 +220,7 @@ def dump_rollout_trajectories(path, global_step, data: DataProto):
     if not path:
         return
 
-    columns_config: Optional[List] = data.meta_info.get("COLUMMNS_CONFIG", None)
+    columns_config: Optional[List] = data.meta_info.get("COLUMNS_CONFIG", None)
     if columns_config is None:
         return
 
