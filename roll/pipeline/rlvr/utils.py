@@ -66,5 +66,5 @@ def dump_rollout_to_specific_path(path: str, global_step: int, data: DataProto, 
     # TODO:If IO becomes the bottleneck, need use queue and only one write process to dump data
     for checker, func in DUMPING_FUNC:
         if checker(path):
-            p = multiprocessing.Process(target=func, args=(path, write_data, COLUMMNS_CONFIG), daemon=True)
+            p = multiprocessing.Process(target=func, args=(path, write_data, COLUMNS_CONFIG), daemon=True)
             p.start()

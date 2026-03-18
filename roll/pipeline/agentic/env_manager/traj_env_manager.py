@@ -290,6 +290,24 @@ class TrajEnvManager(BaseEnvManager):
         scores = [i['reward'] for i in self.rollout_cache.history]
         episode_score = sum(scores)
 
+        # TODO: 准备数据
+        # ============ 构建 agent 和环境交互的文本 ============
+        # 收集每一步的交互内容
+        interaction_history = []
+        for step_idx, step_data in enumerate(self.rollout_cache.history):
+            step_record = {
+                "step": step_idx,
+                "observation": step_data.get("observation", ""),      # 环境观测
+                "llm_response": step_data.get("llm_response", ""),    # agent 响应
+                "reward": step_data.get("reward", 0.0),               # 奖励
+            }
+            interaction_history.append(step_record)
+        
+        # 将交互历史序列化为 JSON 字符串
+        import json
+        save_content = json.dumps(interaction_history, ensure_ascii=False)
+        rollout_tag = rollout_cache.tag + "_" + str(rollout_cache.group_id) + "_" + str(self.episode_id)
+
         token_ids = []
         prompt_masks = []
         response_masks = []
@@ -344,6 +362,8 @@ class TrajEnvManager(BaseEnvManager):
             "frames": np.array([self.rollout_cache.frames], dtype=object),
             "step_scores": np.array([scores], dtype=object),
             "episode_scores": np.array([episode_score], dtype=object),
+            "rollout_tags": np.array([rollout_tag], dtype=object),
+            "save_content": np.array([save_content], dtype=object),
         })
 
         metrics_agg_mode = self.rollout_cache.history[-1].get('metrics_agg_mode', {})
@@ -354,4 +374,13 @@ class TrajEnvManager(BaseEnvManager):
         env_metric = {f"env/{rollout_cache.tag}/{k}": v for k, v in env_metric.items()}
         env_metric["env/response_length"] = response_length
         lm_input.meta_info = {"metrics": env_metric}
+
+        # TODO: 配置数据库字段类型
+        columns_config = [
+            ["rollout_tags", "string"],
+            ["save_content", "string"],
+        ]
+        lm_input.meta_info.update({
+            "COLUMNS_CONFIG": columns_config
+        })
         return lm_input
