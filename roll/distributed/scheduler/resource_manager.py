@@ -65,7 +65,8 @@ class ResourceManager:
                 # NODE_RANK environment variable is not set in the cluster, so a default value is used for NODE_RANK.
                 self.node_ranks = list(range(len(self.placement_groups)))
 
-            self.gpu_ranks = [int(gpu_rank[0]) for gpu_rank in gpu_ranks]
+            # self.gpu_ranks = [int(gpu_rank[0]) for gpu_rank in gpu_ranks]
+            self.gpu_ranks = [[int(gpu_rank) for gpu_rank in group] for group in gpu_ranks]
             self.node2pg: Dict[int, PlacementGroup] = {}
             for node_rank, placement_group in zip(self.node_ranks, self.placement_groups):
                 self.node2pg[node_rank] = placement_group
@@ -125,6 +126,8 @@ class ResourceManager:
                                                         f"num_nodes×num_gpus_per_node={self.num_nodes}×{self.gpu_per_node}")
 
                     pg = self.nodes_placement_group(node_rank)
+                    gpu_rank = self.gpu_ranks[node_rank][gpu_rank]
+                    
                     pg_list.append(
                         dict(node_rank=node_rank, gpu_rank=gpu_rank, placement_group=pg, ray_address=ray_address)
                     )

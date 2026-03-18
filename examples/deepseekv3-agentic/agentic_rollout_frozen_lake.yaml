@@ -1,0 +1,73 @@
+defaults:
+  - ../config/traj_envs@_here_
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null
+
+exp_name: "api"
+seed: 42
+logging_dir: /root/autodl-tmp/output/frozen_lake/DeepSeek-V3/logs
+output_dir: /root/autodl-tmp/output/frozen_lake/DeepSeek-V3/
+rollout_dump_dir: /root/autodl-tmp/output/frozen_lake/DeepSeek-V3/rollout_dump
+system_envs:
+  USE_MODELSCOPE: '0'
+
+track_with: tensorboard
+tracker_kwargs:
+  log_dir: /data/oss_bucket_0/yali/llm/tensorboard/roll_exp/frozen_lake/DeepSeek-V3/
+
+num_gpus_per_node: 0
+
+max_steps: 1
+logging_steps: 1
+resume_from_checkpoint: false
+
+rollout_batch_size: 128
+sequence_length: 8192
+
+pretrain: /root/ROLL/deepseek_v3_tokenizer
+
+train_env_manager:
+  # max_traj_per_env: 1  # 👈 显式设置每个环境只运行 1 个 episode
+  num_env_groups: 128
+  group_size: 1
+  tags: [FrozenLake]
+  num_groups_partition: [128]
+  
+  llm_proxy:
+    proxy_type: "openai"
+    proxy_config: 
+      base_url: "https://api.deepseek.com"
+      api_key: "sk-00732325ef2948aea4f3c946dabdb2cc"
+      model_name: "deepseek-chat"
+
+custom_envs:
+  SimpleSokoban:
+    ${custom_env.SimpleSokoban}
+  LargerSokoban:
+    ${custom_env.LargerSokoban}
+  FrozenLake:
+    ${custom_env.FrozenLake}
+
+# 以下内容除了 actor_infer 中的 generating_args 外，无实际含义，只是为了保持配置完整 (代码能跑就别动!)
+actor_infer:
+  # device_mapping: list(range(0,1))
+  # 控制 llm_proxy 的生成参数
+  generating_args:
+    temperature: 0.0
+    max_new_tokens: 128
+
+val_env_manager:
+  num_env_groups: 1
+  group_size: 1
+  tags: [FrozenLake]
+  num_groups_partition: [1]
+
+  llm_proxy:
+    proxy_type: "openai"
+    proxy_config: 
+      base_url: "https://api.deepseek.com"
+      api_key: "sk-00732325ef2948aea4f3c946dabdb2cc"
+      model_name: "deepseek-chat"

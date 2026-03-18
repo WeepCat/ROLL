@@ -83,8 +83,8 @@ class AgenticRolloutPipeline(BasePipeline):
                 eval_metrics[f"{group_name}/score/mean"] = torch.mean(eval_score).detach().item()
                 eval_metrics[f"{group_name}/score/max"] = torch.max(eval_score).detach().item()
                 eval_metrics[f"{group_name}/score/min"] = torch.min(eval_score).detach().item()
-                group_eval_metrics = reduce_metrics(group_batch.meta_info.get("metrics", {}))
-                eval_metrics.update({f"{group_name}/{k}": v for k, v in group_eval_metrics.items()})
+                # group_eval_metrics = reduce_metrics(group_batch.meta_info.get("metrics", {}))
+                # eval_metrics.update({f"{group_name}/{k}": v for k, v in group_eval_metrics.items()})
 
             metrics.update({f"val/{k}": v for k, v in eval_metrics.items()})
             batch.meta_info["global_step"] = global_step
