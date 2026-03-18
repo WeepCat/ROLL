@@ -174,3 +174,4 @@ log
 
 output/
 .vscode/
+*.yaml
