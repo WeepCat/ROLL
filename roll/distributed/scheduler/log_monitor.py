@@ -230,9 +230,9 @@ class LogMonitorListener:
         if self.rank == 0:
             self.wait_for_grace_stop()
         ray.shutdown()
-        logger.info("Execute ray.shutdown before the program exits...")
-        cmd = f"ray stop --force"
-        subprocess.run(cmd, shell=True, capture_output=True)
+        # logger.info("Execute ray.shutdown before the program exits...")
+        # cmd = f"ray stop --force"
+        # subprocess.run(cmd, shell=True, capture_output=True)
 
     def start(self):
         atexit.register(self.stop)
