@@ -1,7 +1,7 @@
 import numpy as np
 import random
 from gymnasium.envs.toy_text.frozen_lake import FrozenLakeEnv as GymFrozenLakeEnv
-from typing import Optional
+from typing import Optional, Tuple
 
 import gem
 from gem import Env
@@ -26,6 +26,10 @@ class FrozenLakeEnv(Env, GymFrozenLakeEnv):
                  format_penalty=0.0,
                  action_pattern=r"<answer>(.*?)</answer>",
                  special_token_list=("<|im_start|>", "<|im_end|>"),
+                 # ===== 新增参数 =====
+                 reward_mode: str = "outcome",  # "outcome" 或 "process"
+                 gamma: float = 1.0,             # process reward 的折扣因子
+                 # ==================
                  **kwargs
                  ):
         self.GRID_LOOKUP = {0: "P", 1: "_", 2: "O", 3: "G", 4: "X", 5: "√"}
@@ -56,9 +60,23 @@ class FrozenLakeEnv(Env, GymFrozenLakeEnv):
         self.action_pattern = action_pattern
         self.special_token_list = special_token_list
 
+        # ===== 新增：保存奖励相关参数 =====
+        self.reward_mode = reward_mode
+        self.gamma = gamma
+        # ====================================
+
         random_map = generate_random_map(size=self.size, p=self.p, seed=map_seed)
         GymFrozenLakeEnv.__init__(self, desc=random_map, is_slippery=is_slippery, render_mode=self.render_mode, **kwargs)
         self.step_count = 0
+
+    def _manhattan_distance(self, pos1: Tuple[int, int], pos2: Tuple[int, int]) -> int:
+        """计算曼哈顿距离"""
+        return abs(pos1[0] - pos2[0]) + abs(pos1[1] - pos2[1])
+
+    def _get_goal_pos(self) -> Tuple[int, int]:
+        """获取目标位置"""
+        goal_idx = np.where(self.desc == b"G")[0][0]
+        return (goal_idx // self.ncol, goal_idx % self.ncol)
 
     def get_instructions(self) -> str:
         grid_vocab_str = "\nThe meaning of each symbol in the state is:\n" + ", ".join(
@@ -75,6 +93,12 @@ class FrozenLakeEnv(Env, GymFrozenLakeEnv):
                 random_map = generate_random_map(size=self.size, p=self.p, seed=seed)
                 GymFrozenLakeEnv.__init__(self, desc=random_map, is_slippery=self.is_slippery, render_mode=self.render_mode)
                 GymFrozenLakeEnv.reset(self, seed=seed)
+                # ===== 新增：初始化过程奖励计算所需的距离 =====
+                self.prev_distance = self._manhattan_distance(
+                    (self.s // self.ncol, self.s % self.ncol),
+                    self._get_goal_pos()
+                )
+                # =============================================
                 return self.render(mode=self.render_mode), {"env_instruction": self.get_instructions()}
         except (RuntimeError, RuntimeWarning) as e:
             next_seed = abs(hash(str(seed))) % (2**32) if seed is not None else None
@@ -109,15 +133,40 @@ class FrozenLakeEnv(Env, GymFrozenLakeEnv):
 
             return next_obs, reward, False, False, info
 
+        # ===== 新增：执行动作前记录当前位置和距离 =====
         prev_pos = int(self.s)
+        prev_pos_tuple = (prev_pos // self.ncol, prev_pos % self.ncol)
+        goal_pos = self._get_goal_pos()
+        prev_distance = self._manhattan_distance(prev_pos_tuple, goal_pos)
+        d_max = 2 * (self.size - 1)  # 最大曼哈顿距离
+        # ============================================
+
         _, reward, terminated, truncated, _ = GymFrozenLakeEnv.step(self, action_info["action"])
         next_obs = self.render()
 
+        # ===== 新增：处理掉洞特殊情况 =====
+        if self.desc[self.player_pos] == b"H":
+            reward = -1.0
+        # ==================================
+
+        curr_pos = int(self.s)
         action_effective = prev_pos != int(self.s)
+
         if not action_effective:
             action_desc = f"At turn {self.step_count}, you tried to move {action_info['action_content']}, which is not effective yet."
         else:
             action_desc = f"At turn {self.step_count}, you moved {action_info['action_content']}, which is effective."
+            # 位置改变的情况
+            curr_pos_tuple = (curr_pos // self.ncol, curr_pos % self.ncol)
+            curr_distance = self._manhattan_distance(curr_pos_tuple, goal_pos)
+            
+            # ===== 新增：计算过程奖励 =====
+            if self.reward_mode == "process" and not terminated:
+                # 游戏未结束，使用 process reward
+                # r_process = γ * (Φ(s') - Φ(s))
+                #           = γ * (distance(s) - distance(s')) / d_max
+                reward = self.gamma * (prev_distance - curr_distance) / d_max if d_max > 0 else 0
+            # ==========================
 
         metrics = {
             "action_is_effective": action_effective,
